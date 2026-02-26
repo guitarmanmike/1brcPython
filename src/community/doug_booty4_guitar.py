@@ -19,7 +19,7 @@ MMAP_PAGE_SIZE = os.sysconf("SC_PAGE_SIZE")
 def to_int(x: bytes, idx: int) -> int:
 
     #0.0 has a length of 3
-    #last digit char might be at end = offset+2
+    #last digit char might be at end = idx+2
     #if we find "-" sign at 0 pos then end +1
     #we can use the dot position to again shift the end +1
 
