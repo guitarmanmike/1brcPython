@@ -38,7 +38,7 @@ def to_int(x: bytes, idx: int) -> int:
             ((x[idx-3] - 48) & -dot) * 100 #delete this term if !dot
             + (x[idx-2] - 48) * 10
             + (x[idx] - 48))
-            + (sign & 1)) #add one if we did the ones compliment to complete the twos compliment
+            - sign) #add one if we did the ones compliment to complete the twos compliment
 
 
 
