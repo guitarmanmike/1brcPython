@@ -26,19 +26,20 @@ def to_int(x: bytes, idx: int) -> int:
     #we can use the dot position to again shift the end +1
 
     # DASH: int = 45  # ord("-")
-    sign = 0 - (x[idx] == 45)   #-1 if true 0 for false
-    idx += 2 - sign  #subtracting -1 adds to idx
+    sign = 0 - (x[idx] == 45) # want -1 or 0 mask
+    idx += 2 - sign  #mov idx to potential end - (-1) to add
 
     # DOT: int = 46  # ord(".")
     dot = (x[idx] == 46)  # 00.0 pattern so end is +1
     idx += dot
 
-        #xor 1 to get -1 or 1
-    return (sign ^ 1) * (
+        #XOR with -1 will ones compliment 0 will do nothing
+    return (sign ^ (
             ((x[idx-3] - 48) & -dot) * 100 #delete this term if !dot
             + (x[idx-2] - 48) * 10
-            + (x[idx] - 48)
-    )
+            + (x[idx] - 48))
+            + (sign & 1)) #add one if we did the ones compliment to complete the twos compliment
+
 
 
 def process_line(line, result):
