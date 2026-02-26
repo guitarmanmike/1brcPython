@@ -1,10 +1,12 @@
-"""Submitted by Wouter van Veelen (Github user: WouterLVV)
+"""copied from Wouter van Veelen (Github user: WouterLVV)
+contributing Michael Saull
 
 Starting from baseline established by
 Wouter van Veelen
 
 try to make the to_int: function branchless
 
+TODO::
 Also try some other branchless techniques or cython
 """
 
