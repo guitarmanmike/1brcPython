@@ -40,9 +40,6 @@ def to_int(x: bytes, idx: int) -> int:
     )) - sign  #add one if we did the ones compliment to complete the twos compliment
 
 
-
-
-
 def process_line(line, result):
     idx = line.find(b";")
 
@@ -94,17 +91,10 @@ def reduce(results):
                 final[city] = item
     return final
 
-def set_page_size():
-    global MMAP_PAGE_SIZE
-    MMAP_PAGE_SIZE = mmap.ALLOCATIONGRANULARITY
-
-
 def read_file_in_chunks(file_path):
     file_size_bytes = os.path.getsize(file_path)
     base_chunk_size = file_size_bytes // CPU_COUNT
     chunks = []
-
-    #set_page_size()
 
     with open(file_path, "r+b") as file:
         with mmap.mmap(
