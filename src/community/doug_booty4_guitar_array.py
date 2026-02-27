@@ -1,0 +1,138 @@
+"""copied from Wouter van Veelen (Github user: WouterLVV)
+contributing Michael Saull
+
+Starting from baseline established by
+Wouter van Veelen
+
+try to make the to_int: function branchless
+
+TODO::
+Also try some other branchless techniques or cython
+"""
+import array
+import mmap
+import multiprocessing
+import os
+
+CPU_COUNT = os.cpu_count()
+MMAP_PAGE_SIZE = mmap.ALLOCATIONGRANULARITY
+
+def to_int(x: bytes, idx: int) -> int:
+
+    #0.0 has a length of 3
+    #last digit char might be at end = idx+2
+    #if we find "-" sign at 0 pos then end +1
+    #we can use the dot position to again shift the end +1
+
+    # DASH: int = 45  # ord("-")
+    sign = 0 - (x[idx] == 45) # want -1 or 0 mask
+    idx += 2 - sign  #mov idx to potential end - (-1) to add
+
+    # DOT: int = 46  # ord(".")
+    dot = (x[idx] == 46)  # 00.0 pattern so end is +1
+    idx += dot
+
+        #XOR with -1 will ones compliment 0 will do nothing
+    return (sign ^ (
+            ((x[idx-3] - 48) & -dot) * 100 #delete this term if !dot
+            + (x[idx-2] - 48) * 10
+            + (x[idx] - 48)
+    )) - sign  #add one if we did the ones compliment to complete the twos compliment
+
+
+
+
+
+def process_line(line, result):
+    idx = line.find(b";")
+
+    city = line[:idx]
+    temp_int = to_int(line, idx+1)
+
+    try:
+        item = result[city]
+        item[0] += 1
+        item[1] += temp_int
+        item[2] = min(item[2], temp_int)
+        item[3] = max(item[3], temp_int)
+    except KeyError:
+        result[city] = array.array('i',[1, temp_int, temp_int, temp_int])
+
+
+# Will get OS errors if mmap offset is not aligned to page size
+def align_offset(offset, page_size):
+    return (offset // page_size) * page_size
+
+
+def process_chunk(file_path, start_byte, end_byte):
+    offset = align_offset(start_byte, MMAP_PAGE_SIZE)
+    result = {}
+
+    with open(file_path, "rb") as file:
+        length = end_byte - offset
+
+        with mmap.mmap(
+            file.fileno(), length, access=mmap.ACCESS_READ, offset=offset
+        ) as mmapped_file:
+            mmapped_file.seek(start_byte - offset)
+            for line in iter(mmapped_file.readline, b""):
+                process_line(line, result)
+    return result
+
+
+def reduce(results):
+    final = {}
+    for result in results:
+        for city, item in result.items():
+            if city in final:
+                city_result = final[city]
+                city_result[0] += item[0]
+                city_result[1] += item[1]
+                city_result[2] = min(city_result[2], item[2])
+                city_result[3] = max(city_result[3], item[3])
+            else:
+                final[city] = item
+    return final
+
+def set_page_size():
+    global MMAP_PAGE_SIZE
+    MMAP_PAGE_SIZE = mmap.ALLOCATIONGRANULARITY
+
+
+def read_file_in_chunks(file_path):
+    file_size_bytes = os.path.getsize(file_path)
+    base_chunk_size = file_size_bytes // CPU_COUNT
+    chunks = []
+
+    #set_page_size()
+
+    with open(file_path, "r+b") as file:
+        with mmap.mmap(
+            file.fileno(), length=0, access=mmap.ACCESS_READ
+        ) as mmapped_file:
+            start_byte = 0
+            for _ in range(CPU_COUNT):
+                end_byte = min(start_byte + base_chunk_size, file_size_bytes)
+                end_byte = mmapped_file.find(b"\n", end_byte)
+                end_byte = end_byte + 1 if end_byte != -1 else file_size_bytes
+                chunks.append((file_path, start_byte, end_byte))
+                start_byte = end_byte
+
+    with multiprocessing.Pool(processes=CPU_COUNT) as p:
+        results = p.starmap(process_chunk, chunks)
+
+    final = reduce(results)
+
+    print(
+        "{",
+        ", ".join(
+            f"{loc.decode()}={0.1*val[2]:.1f}/{(0.1*val[1] / val[0]):.1f}/{0.1*val[3]:.1f}"
+            for loc, val in sorted(final.items())
+        ),
+        "}",
+        sep="",
+    )
+
+
+if __name__ == "__main__":
+    read_file_in_chunks("data/measurements.txt")

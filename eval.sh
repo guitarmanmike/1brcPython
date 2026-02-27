@@ -9,6 +9,7 @@ commands=(
     "pypy3 src/community/doug_booty4_wouter.py"
     "pypy3 src/community/doug_booty4_no_gc.py"
     "pypy3 src/community/doug_booty4_guitar.py"
+    "pypy3 src/community/doug_booty4_guitar_array.py"
 )
 
 for cmd in "${commands[@]}"; do
