@@ -13,8 +13,9 @@ import array
 import mmap
 import multiprocessing
 import os
+from array import ArrayType
 
-CPU_COUNT = os.cpu_count()
+CPU_COUNT = os.cpu_count() - 2 # leaving some cores for OS helps
 MMAP_PAGE_SIZE = mmap.ALLOCATIONGRANULARITY
 
 def to_int(x: bytes, idx: int) -> int:
@@ -25,22 +26,22 @@ def to_int(x: bytes, idx: int) -> int:
     #we can use the dot position to again shift the end +1
 
     # DASH: int = 45  # ord("-")
-    sign = 0 - (x[idx] == 45) # want -1 or 0 mask
-    idx += 2 - sign  #mov idx to potential end - (-1) to add
+    sign = -(x[idx] == 45) # want -1 or 0 mask
+    idx -= sign  #mov idx start of number
 
     # DOT: int = 46  # ord(".")
-    dot = (x[idx] == 46)  # 00.0 pattern so end is +1
-    idx += dot
+    dot = -(x[idx+2] == 46)  # -1 means we found 00.0 pattern
+    idx += 2 - dot # move idx to end
 
         #XOR with -1 will ones compliment 0 will do nothing
     return (sign ^ (
-            ((x[idx-3] - 48) & -dot) * 100 #delete this term if !dot
+            ((x[idx-3] - 48) & dot) * 100 # delete this term if dot
             + (x[idx-2] - 48) * 10
             + (x[idx] - 48)
-    )) - sign  #add one if we did the ones compliment to complete the twos compliment
+    )) - sign  # add one if we did the ones compliment to complete the twos compliment
 
 
-def process_line(line, result):
+def process_line(line: bytes, result: dict[bytes, ArrayType]):
     idx = line.find(b";")
 
     city = line[:idx]
